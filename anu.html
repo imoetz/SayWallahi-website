@@ -1,0 +1,553 @@
+﻿react
+import React, { useState, useEffect } from 'react';
+import { 
+  Tv, 
+  Clock, 
+  Plus, 
+  Trash2, 
+  Play, 
+  DollarSign, 
+  Activity, 
+  Gamepad2, 
+  Coffee, 
+  Settings, 
+  User, 
+  X, 
+  Bell, 
+  Volume2, 
+  VolumeX, 
+  TrendingUp,
+  Monitor,
+  PlusCircle,
+  History,
+  CheckCircle,
+  AlertTriangle
+} from 'lucide-react';
+
+// Mock Data Awal Konsol
+const INITIAL_CONSOLES = [
+  { id: 'ps5-1', name: 'PlayStation 5 - VIP 01', type: 'PS5', pricePerHour: 15000, status: 'available', controllers: 2 },
+  { id: 'ps5-2', name: 'PlayStation 5 - VIP 02', type: 'PS5', pricePerHour: 15000, status: 'available', controllers: 2 },
+  { id: 'ps4-1', name: 'PlayStation 4 Pro - Regular 03', type: 'PS4', pricePerHour: 10000, status: 'available', controllers: 2 },
+  { id: 'ps4-2', name: 'PlayStation 4 Pro - Regular 04', type: 'PS4', pricePerHour: 10000, status: 'available', controllers: 2 },
+  { id: 'ps4-3', name: 'PlayStation 4 - Regular 05', type: 'PS4', pricePerHour: 8000, status: 'available', controllers: 2 },
+  { id: 'ps3-1', name: 'PlayStation 3 - Nostalgia 06', type: 'PS3', pricePerHour: 5000, status: 'available', controllers: 2 },
+];
+
+// Pilihan Makanan & Minuman Tambahan Default
+const INITIAL_SNACKS = [
+  { id: 'indomie', name: 'Indomie Goreng + Telur', price: 10000 },
+  { id: 'es-teh', name: 'Es Teh Manis Jumbo', price: 4000 },
+  { id: 'kopi', name: 'Kopi Susu Dingin', price: 5000 },
+  { id: 'snack-pack', name: 'Chiki / Snack Pack', price: 3000 },
+  { id: 'soft-drink', name: 'Minuman Kaleng Dingin', price: 6000 },
+];
+
+export default function App() {
+  // State Utama
+  const [consoles, setConsoles] = useState(() => {
+    const saved = localStorage.getItem('ps_rental_consoles');
+    return saved ? JSON.parse(saved) : INITIAL_CONSOLES;
+  });
+
+  const [snacksMenu, setSnacksMenu] = useState(() => {
+    const saved = localStorage.getItem('ps_rental_snacks');
+    return saved ? JSON.parse(saved) : INITIAL_SNACKS;
+  });
+
+  const [sessions, setSessions] = useState(() => {
+    const saved = localStorage.getItem('ps_rental_sessions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('ps_rental_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // State UI
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'consoles', 'snacks', 'history'
+  const [isNewRentalOpen, setIsNewRentalOpen] = useState(false);
+  const [selectedConsole, setSelectedConsole] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Custom Confirmation Modal State (Pengganti dialog confirm browser bawaan)
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
+
+  // Form New Rental State
+  const [customerName, setCustomerName] = useState('');
+  const [rentalType, setRentalType] = useState('duration'); // 'duration' or 'open'
+  const [durationHours, setDurationHours] = useState(1);
+  const [extraControllers, setExtraControllers] = useState(0);
+  const [selectedSnacks, setSelectedSnacks] = useState([]); // Array of { id, quantity }
+
+  // Search & Filter
+  const [consoleFilter, setConsoleFilter] = useState('ALL');
+
+  // Notifikasi / Toast State
+  const [notifications, setNotifications] = useState([]);
+
+  // Save to LocalStorage on Change
+  useEffect(() => {
+    localStorage.setItem('ps_rental_consoles', JSON.stringify(consoles));
+  }, [consoles]);
+
+  useEffect(() => {
+    localStorage.setItem('ps_rental_snacks', JSON.stringify(snacksMenu));
+  }, [snacksMenu]);
+
+  useEffect(() => {
+    localStorage.setItem('ps_rental_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    localStorage.setItem('ps_rental_history', JSON.stringify(history));
+  }, [history]);
+// Sound generator menggunakan Web Audio API
+  const playAlertSound = (type = 'warning') => {
+    if (!soundEnabled) return;
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      if (type === 'warning') {
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        gain1.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        osc1.start();
+        osc1.stop(audioCtx.currentTime + 0.15);
+
+        setTimeout(() => {
+          const osc2 = audioCtx.createOscillator();
+          const gain2 = audioCtx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(audioCtx.destination);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
+          gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          osc2.start();
+          osc2.stop(audioCtx.currentTime + 0.15);
+        }, 250);
+      } else if (type === 'success') {
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; 
+        freqs.forEach((freq, index) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.1);
+          gain.gain.setValueAtTime(0.1, audioCtx.currentTime + index * 0.1);
+          osc.start(audioCtx.currentTime + index * 0.1);
+          osc.stop(audioCtx.currentTime + (index * 0.1) + 0.15);
+        });
+      }
+    } catch (e) {
+      console.log("Audio Context not supported or allowed yet.");
+    }
+  };
+
+  // Realtime Timer Clock yang berjalan setiap detik
+  useEffect(() => {
+    const interval = setInterval(() => {
+      let updated = false;
+      const now = Date.now();
+
+      const nextSessions = sessions.map(session => {
+        if (session.status !== 'active' || session.type === 'open') return session;
+
+        const totalDurationMs = session.durationHours * 60 * 60 * 1000;
+        const elapsed = now - session.startTime;
+        const remaining = Math.max(0, totalDurationMs - elapsed);
+
+        if (remaining === 0 && session.remainingTime > 0) {
+          updated = true;
+          addNotification(Waktu sewa ${session.consoleName} (${session.customerName}) telah habis!, 'danger');
+          playAlertSound('warning');
+        } 
+        else if (remaining <= 5 * 60 * 1000 && session.remainingTime > 5 * 60 * 1000) {
+          updated = true;
+          addNotification(Sisa waktu ${session.consoleName} tinggal 5 menit!, 'warning');
+          playAlertSound('warning');
+        }
+
+        return {
+          ...session,
+          remainingTime: remaining
+        };
+      });
+
+      if (JSON.stringify(sessions) !== JSON.stringify(nextSessions) || updated) {
+        setSessions(nextSessions);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessions, soundEnabled]);
+
+  // Tambah Toast Notifikasi Dinamis
+  const addNotification = (message, type = 'info') => {
+    const newNotif = { id: Date.now(), message, type };
+    setNotifications(prev => [newNotif, ...prev].slice(0, 5));
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== newNotif.id));
+    }, 6000);
+  };
+
+  // Pengendali kuantitas cemilan di modal pemesanan awal
+  const handleUpdateSnackQty = (snackId, amount) => {
+    setSelectedSnacks(prev => {
+      const existing = prev.find(item => item.id === snackId);
+      if (!existing) {
+        if (amount > 0) {
+          return [...prev, { id: snackId, quantity: amount }];
+        }
+        return prev;
+      }
+      const newQty = existing.quantity + amount;
+      if (newQty <= 0) {
+        return prev.filter(item => item.id !== snackId);
+      }
+      return prev.map(item => item.id === snackId ? { ...item, quantity: newQty } : item);
+    });
+  };
+// Mulai Sesi Rental
+  const handleStartRental = (e) => {
+    e.preventDefault();
+    if (!selectedConsole) return;
+    if (!customerName.trim()) {
+      addNotification("Nama pelanggan harus diisi!", "warning");
+      return;
+    }
+
+    const consoleObj = consoles.find(c => c.id === selectedConsole.id);
+    if (consoleObj.status !== 'available') {
+      addNotification("Konsol sedang tidak tersedia!", "danger");
+      return;
+    }
+
+    const startTime = Date.now();
+    const durationMs = rentalType === 'duration' ? durationHours * 60 * 60 * 1000 : 0;
+    
+    let snackCost = 0;
+    const itemsOrdered = selectedSnacks.map(item => {
+      const menuItem = snacksMenu.find(m => m.id === item.id);
+      if (!menuItem) return null;
+      const cost = menuItem.price * item.quantity;
+      snackCost += cost;
+      return {
+        id: menuItem.id,
+        name: menuItem.name,
+        price: menuItem.price,
+        quantity: item.quantity,
+        totalPrice: cost
+      };
+    }).filter(Boolean);
+
+    const extraControllerCost = extraControllers * 2000 * (rentalType === 'duration' ? durationHours : 1);
+
+    const newSession = {
+      id: session-${Date.now()},
+      consoleId: selectedConsole.id,
+      consoleName: selectedConsole.name,
+      consoleType: selectedConsole.type,
+      ratePerHour: selectedConsole.pricePerHour,
+      customerName: customerName,
+      type: rentalType,
+      startTime: startTime,
+      durationHours: rentalType === 'duration' ? Number(durationHours) : 0,
+      remainingTime: rentalType === 'duration' ? durationMs : null,
+      extraControllers: Number(extraControllers),
+      extraControllerCost: extraControllerCost,
+      snacks: itemsOrdered,
+      snackCost: snackCost,
+      status: 'active'
+    };
+
+    setConsoles(prev => prev.map(c => c.id === selectedConsole.id ? { ...c, status: 'rented' } : c));
+    setSessions(prev => [newSession, ...prev]);
+
+    // Reset Form & Tutup Modal
+    setIsNewRentalOpen(false);
+    setCustomerName('');
+    setRentalType('duration');
+    setDurationHours(1);
+    setExtraControllers(0);
+    setSelectedSnacks([]);
+    setSelectedConsole(null);
+
+    addNotification(Sewa ${newSession.consoleName} berhasil dimulai!, "success");
+    playAlertSound('success');
+  };
+
+  // Selesaikan Rental (Checkout & Kalkulasi)
+  const handleCheckout = (session) => {
+    const endTime = Date.now();
+    const elapsedMs = endTime - session.startTime;
+    const elapsedHours = elapsedMs / (1000 * 60 * 60);
+
+    let calculatedHours = session.durationHours;
+    if (session.type === 'open') {
+      calculatedHours = Math.max(0.25, elapsedHours);
+    }
+
+    const consoleCost = Math.round(calculatedHours * session.ratePerHour);
+    const updatedControllerCost = Math.round(session.extraControllers * 2000 * calculatedHours);
+    const totalCost = consoleCost + updatedControllerCost + session.snackCost;
+
+    const completedSession = {
+      ...session,
+      endTime: endTime,
+      elapsedHours: elapsedHours,
+      consoleCost: consoleCost,
+      extraControllerCost: updatedControllerCost,
+      totalCost: totalCost,
+      status: 'completed'
+    };
+
+    setHistory(prev => [completedSession, ...prev]);
+    setConsoles(prev => prev.map(c => c.id === session.consoleId ? { ...c, status: 'available' } : c));
+    setSessions(prev => prev.filter(s => s.id !== session.id));
+
+    addNotification(Checkout sukses untuk ${session.customerName}! Total Tagihan: Rp ${totalCost.toLocaleString('id-ID')}, 'success');
+    playAlertSound('success');
+  };
+
+  // Tambah Waktu Billing Aktif
+  const handleAddTime = (sessionId, hours) => {
+    setSessions(prev => prev.map(session => {
+      if (session.id !== sessionId || session.type === 'open') return session;
+
+      const currentDuration = session.durationHours;
+      const addedDuration = Number(hours);
+      const newDuration = currentDuration + addedDuration;
+      const additionalMs = addedDuration * 60 * 60 * 1000;
+      const newRemainingTime = session.remainingTime + additionalMs;
+const newControllerCost = session.extraControllers * 2000 * newDuration;
+
+      addNotification(Berhasil menambah +${hours} jam pada ${session.consoleName}!, 'success');
+      return {
+        ...session,
+        durationHours: newDuration,
+        remainingTime: newRemainingTime,
+        extraControllerCost: newControllerCost
+      };
+    }));
+  };
+
+  // Tambah Pesanan Cemilan Cepat Saat Sedang Bermain
+  const handleAddSnackToActiveSession = (sessionId, snackId) => {
+    const menuItem = snacksMenu.find(m => m.id === snackId);
+    if (!menuItem) return;
+
+    setSessions(prev => prev.map(session => {
+      if (session.id !== sessionId) return session;
+
+      const existingSnackIndex = session.snacks.findIndex(s => s.id === snackId);
+      let updatedSnacks = [...session.snacks];
+
+      if (existingSnackIndex > -1) {
+        updatedSnacks[existingSnackIndex] = {
+          ...updatedSnacks[existingSnackIndex],
+          quantity: updatedSnacks[existingSnackIndex].quantity + 1,
+          totalPrice: (updatedSnacks[existingSnackIndex].quantity + 1) * menuItem.price
+        };
+      } else {
+        updatedSnacks.push({
+          id: menuItem.id,
+          name: menuItem.name,
+          price: menuItem.price,
+          quantity: 1,
+          totalPrice: menuItem.price
+        });
+      }
+
+      addNotification(Menambahkan ${menuItem.name} ke ${session.customerName}, 'info');
+
+      return {
+        ...session,
+        snacks: updatedSnacks,
+        snackCost: session.snackCost + menuItem.price
+      };
+    }));
+  };
+
+  // Format Tampilan Timer (HH:MM:SS)
+  const formatTimer = (ms) => {
+    if (ms === null) return "OPEN TIME";
+    if (ms <= 0) return "WAKTU HABIS";
+    
+    const totalSecs = Math.floor(ms / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+
+    return ${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')};
+  };
+
+  // Format IDR Rupiah
+  const formatIDR = (num) => {
+    return Rp ${Math.round(num).toLocaleString('id-ID')};
+  };
+
+  // Perhitungan Statistik
+  const totalRevenue = history.reduce((acc, curr) => acc + (curr.totalCost || 0), 0);
+  const activeCount = sessions.filter(s => s.status === 'active').length;
+  const availableCount = consoles.filter(c => c.status === 'available').length;
+  const maintenanceCount = consoles.filter(c => c.status === 'maintenance').length;
+
+  const handleOpenNewRental = (consoleObj) => {
+    setSelectedConsole(consoleObj);
+    setIsNewRentalOpen(true);
+  };
+
+  const toggleConsoleMaintenance = (consoleId) => {
+    setConsoles(prev => prev.map(c => {
+      if (c.id !== consoleId) return c;
+      const nextStatus = c.status === 'maintenance' ? 'available' : 'maintenance';
+      addNotification(${c.name} diubah menjadi ${nextStatus === 'maintenance' ? 'Perawatan' : 'Tersedia'}, 'info');
+      return { ...c, status: nextStatus };
+    }));
+  };
+
+  // FUNGSI OPERASIONAL HAPUS (Menggunakan Modal Konfirmasi Kustom)
+  const requestDeleteConsole = (consoleObj) => {
+    if (consoleObj.status === 'rented') {
+      addNotification("Konsol sedang aktif disewa dan tidak bisa dihapus!", "warning");
+      return;
+    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Hapus Unit Konsol",
+      message: Apakah Anda yakin ingin menghapus "${consoleObj.name}" dari sistem secara permanen?,
+      onConfirm: () => {
+        setConsoles(prev => prev.filter(c => c.id !== consoleObj.id));
+        addNotification(Konsol "${consoleObj.name}" berhasil dihapus., "success");
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const requestDeleteSnack = (snackObj) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Hapus Menu F&B",
+message: Apakah Anda yakin ingin menghapus menu "${snackObj.name}" dari katalog aktif?,
+      onConfirm: () => {
+        setSnacksMenu(prev => prev.filter(s => s.id !== snackObj.id));
+        addNotification(Menu "${snackObj.name}" berhasil dihapus., "success");
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const requestDeleteHistoryItem = (historyObj) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Hapus Riwayat Transaksi",
+      message: Apakah Anda yakin ingin menghapus laporan sewa atas nama "${historyObj.customerName}" (${formatIDR(historyObj.totalCost)})? Tindakan ini tidak dapat dibatalkan.,
+      onConfirm: () => {
+        setHistory(prev => prev.filter(item => item.id !== historyObj.id));
+        addNotification("Catatan transaksi berhasil dihapus dari laporan.", "success");
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const requestClearAllHistory = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Hapus Seluruh Riwayat",
+      message: "Apakah Anda benar-benar yakin ingin mengosongkan seluruh database riwayat transaksi? Tindakan ini akan mereset grafik pendapatan Anda.",
+      onConfirm: () => {
+        setHistory([]);
+        addNotification("Semua riwayat transaksi telah dikosongkan.", "success");
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const createNewConsole = (e) => {
+    e.preventDefault();
+    const name = e.target.consoleName.value;
+    const type = e.target.consoleType.value;
+    const price = Number(e.target.consolePrice.value);
+    
+    if (!name || !price) return;
+
+    const newConsole = {
+      id: console-${Date.now()},
+      name,
+      type,
+      pricePerHour: price,
+      status: 'available',
+      controllers: 2
+    };
+
+    setConsoles(prev => [...prev, newConsole]);
+    e.target.reset();
+    addNotification(Konsol ${name} berhasil didaftarkan!, 'success');
+  };
+
+  const createNewSnack = (e) => {
+    e.preventDefault();
+    const name = e.target.snackName.value;
+    const price = Number(e.target.snackPrice.value);
+
+    if (!name || !price) return;
+
+    const newSnack = {
+      id: snack-${Date.now()},
+      name,
+      price
+    };
+
+    setSnacksMenu(prev => [...prev, newSnack]);
+    e.target.reset();
+    addNotification(Menu ${name} berhasil ditambahkan!, 'success');
+  };
+
+  // Hitung total belanja F&B di modal
+  const calculatedSnacksTotal = selectedSnacks.reduce((total, item) => {
+    const originalItem = snacksMenu.find(m => m.id === item.id);
+    if (!originalItem) return total;
+    return total + (originalItem.price * item.quantity);
+  }, 0);
+
+  return (
+    <div className="min-h-screen bg-[#0b0813] text-purple-100 font-sans antialiased flex flex-col md:flex-row selection:bg-purple-600 selection:text-white">
+      
+      {/* SIDEBAR */}
+      <aside className="w-full md:w-64 bg-[#140e24] border-b md:border-b-0 md:border-r border-purple-900/40 p-5 flex flex-col justify-between shrink-0">
+        <div>
+          {/* Logo Brand */}
+          <div className="flex items-center gap-3 mb-8 px-2">
+            <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl shadow-lg shadow-purple-500/20 animate-pulse">
+              <Gamepad2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="font-bold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-300">
+                GIGAPLAY
+              </h1>
+              <p className="text-xs text-purple-400 font-medium tracking-widest">PS RENTAL & LOUNGE</p>
+            </div>
+          </div>
+
+          {/* Navigasi Utama */}
+          <nav className="space-y-1.5">
+            <button
+onClick={() => setActiveTab('dashboard')}
+              className={w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                activeTab === 'dashboard'
+                  ? 'bg-purple-600/25 text-purple-200 border-l-4 border-purple-500 shadow-md shadow-purple-950/50'
+                  : 'text-purple-400 hover:bg-purple-950/40 hover:text-purple-200'
+              }}
+            >
